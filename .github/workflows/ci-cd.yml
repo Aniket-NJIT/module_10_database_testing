@@ -7,10 +7,12 @@ on:
     branches: [ "main" ]
 
 jobs:
+  # 1. TEST JOB
+  # Spins up Postgres and runs pytest suite
+
   test:
     runs-on: ubuntu-latest
     
-    # Spin up a PostgreSQL container for integration testing
     services:
       postgres:
         image: postgres:15
@@ -41,15 +43,39 @@ jobs:
 
     - name: Run Tests with Pytest
       env:
-        # Override the database URL to point to the Postgres service
         DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        TEST_DATABASE_URL: postgresql://test_user:test_password@localhost:5432/test_db
       run: |
         pytest tests/
 
-  deploy:
-    needs: test # Only run if tests pass
+
+  # 2. SECURITY SCAN JOB
+  # Waits for tests to pass, then scans for vulnerabilities
+
+  security-scan:
+    needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' # Only deploy on main branch
+    
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Bandit
+      run: pip install bandit
+
+    - name: Run Security Scan
+      run: bandit -r app/
+
+  # 3. DEPLOY JOB
+
+  deploy:
+    needs: security-scan 
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' # Only deploy if pushing to the main branch
 
     steps:
     - uses: actions/checkout@v3
