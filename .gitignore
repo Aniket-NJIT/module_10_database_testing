@@ -30,7 +30,6 @@ app.db
 # Environment Variables
 .env
 .env.local
-.github/
 
 # OS & IDE Specific
 .DS_Store
